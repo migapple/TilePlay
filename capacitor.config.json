@@ -1,0 +1,20 @@
+{
+  "appId": "com.michel.garlandat.rummikub",
+  "appName": "Rummikub",
+  "webDir": "App/public",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0a1f10",
+  "ios": {
+    "backgroundColor": "#0a1f10",
+    "contentInset": "automatic",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

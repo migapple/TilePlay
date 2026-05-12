@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TilePlay</title>
+<style>
+:root{--bg:#1a1a2e;--green:#2d6a2d;--gdark:#1a4a1a;--gold:#FFD700}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+#app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif}
+
+#topbar{
+  padding-top:calc(12px + env(safe-area-inset-top));
+  padding-left:14px;padding-right:14px;padding-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+#topbar.p1{background:#0d3b6e}
+#topbar.p2{background:#6e2a0d}
+.badge{padding:5px 16px;border-radius:20px;font-weight:700;font-size:14px}
+.bp1{background:#185FA5;color:#fff}
+.bp2{background:#D85A30;color:#fff}
+.sc{display:flex;gap:14px;font-size:13px;color:rgba(255,255,255,.85)}
+.sc b{font-weight:700}
+.sc small{opacity:.55;font-size:11px}
+#tnum{font-size:12px;color:rgba(255,255,255,.55)}
+
+#board{flex:1;background:var(--green);border-top:2px solid var(--gdark);border-bottom:2px solid var(--gdark);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-height:0}
+#hint{font-size:11px;color:rgba(255,255,255,.7);margin-bottom:8px;line-height:1.4}
+#hint b{color:var(--gold)}
+#sets{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;min-height:100px}
+
+.bset{display:flex;gap:3px;padding:6px 8px;background:rgba(0,0,0,.28);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;flex-wrap:nowrap;cursor:pointer;align-items:flex-end}
+.bset.drop{border-color:var(--gold);border-style:dashed;background:rgba(255,215,0,.08)}
+
+/* TUILE */
+.tile{width:42px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;cursor:pointer;border:2px solid rgba(0,0,0,.2);box-shadow:0 2px 5px rgba(0,0,0,.4);flex-shrink:0;-webkit-user-select:none;user-select:none;transition:transform .12s,box-shadow .12s,outline .1s}
+.tile.sel{transform:translateY(-9px);box-shadow:0 10px 20px rgba(0,0,0,.45);outline:3px solid var(--gold);outline-offset:1px}
+.tile.nw{outline:3px solid #4CAF50;outline-offset:2px}
+.tile[data-c=red]{background:#E53935;color:#fff;border-color:#B71C1C}
+.tile[data-c=blue]{background:#1565C0;color:#fff;border-color:#0D47A1}
+.tile[data-c=black]{background:#212121;color:#fff;border-color:#000}
+.tile[data-c=orange]{background:#E65100;color:#fff;border-color:#BF360C}
+.tile[data-c=joker]{background:linear-gradient(135deg,#7B1FA2,#1565C0);color:var(--gold);border-color:#4A148C;font-size:22px}
+
+/* sélection multiple : compteur sur la tuile */
+.tile.sel::before{content:attr(data-selnum);position:absolute;top:-6px;right:-6px;background:var(--gold);color:#000;font-size:10px;font-weight:900;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:16px;text-align:center}
+.tile{position:relative}
+
+#hand{flex-shrink:0;background:#111827;border-top:1.5px solid #2d3748;padding:8px 14px 0}
+#hmeta{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+#htitle{font-size:12px;font-weight:600;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.5px}
+#sinfo{font-size:11px;font-weight:600;color:var(--gold)}
+#htiles{display:flex;flex-wrap:wrap;gap:5px;padding-bottom:10px;min-height:66px}
+
+#act{flex-shrink:0;background:#0f172a;border-top:1px solid #1e293b;padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{padding:9px 16px;border-radius:22px;font-size:14px;font-weight:600;cursor:pointer;border:none;flex-shrink:0}
+.btn:active{opacity:.75}
+#bval{background:#2E7D32;color:#fff}
+#bnew{background:#7B1FA2;color:#fff;width:40px;height:40px;padding:0;border-radius:50%;font-size:24px;line-height:40px;text-align:center}
+#bnew:disabled{background:#374151;color:#6b7280;cursor:not-allowed}
+#bdraw{background:#1565C0;color:#fff}
+#bswitch{background:#b45309;color:#fff}
+#bcancel{background:#7f1d1d;color:#fff}
+#msg{font-size:12px;color:#f87171;flex:1;text-align:right;line-height:1.3}
+
+#passov{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.93);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px}
+#passov.on{display:flex}
+#pwho{font-size:22px;font-weight:700;color:var(--gold);text-align:center}
+#pok{padding:14px 36px;background:#185FA5;color:#fff;border:none;border-radius:26px;font-size:16px;font-weight:700;cursor:pointer}
+
+#winov{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.95);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px}
+#winov.on{display:flex}
+#wmsg{font-size:22px;font-weight:700;color:var(--gold);text-align:center;line-height:1.5;white-space:pre-line}
+#wrep{padding:14px 36px;background:#185FA5;color:#fff;border:none;border-radius:26px;font-size:16px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar" class="p1">
+    <div style="display:flex;align-items:center;gap:8px"><div id="tnum">Tour 1</div><button id="blang" onclick="toggleLang()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0;line-height:1">🇬🇧</button></div>
+    <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:1px">TilePlay</div>
+    <div class="sc">
+      <div id="p1ind" style="display:flex;align-items:center;gap:6px">
+        <div id="j1circle" style="width:28px;height:28px;border-radius:50%;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid transparent">J1</div>
+        <span id="s1" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span>
+      </div>
+      <div id="p2ind" style="display:flex;align-items:center;gap:6px">
+        <div id="j2circle" style="width:28px;height:28px;border-radius:50%;background:#D85A30;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid transparent">J2</div>
+        <span id="s2" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="board" onclick="boardBgClick(event)">
+    <!-- Zone Joueur 2 en haut -->
+    <div id="sets2" style="display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;min-height:20px;margin-bottom:4px"></div>
+    <div style="border-top:2px dashed rgba(255,255,255,0.18);margin:6px 0"></div>
+    <!-- Zone Joueur 1 en bas -->
+    <div id="hint"></div>
+    <div id="sets"></div>
+  </div>
+
+  <div id="hand">
+    <div id="hmeta"><div id="htitle">Main — Joueur 1</div><div id="sinfo"></div></div>
+    <div id="htiles"></div>
+  </div>
+
+  <div id="act">
+    <button class="btn" id="bval" onclick="doValidate()" title="Valider">✓</button>
+    <button class="btn" id="bdraw" onclick="doDraw()" title="Piocher">🂠</button>
+    <button class="btn" id="bswitch" onclick="showPass()" style="display:none" title="Changer de joueur">⇄</button>
+    <button class="btn" id="bcancel" onclick="doCancel()" title="Annuler">✕</button>
+    <button class="btn" id="bundo" onclick="doUndo()" disabled style="background:#374151;color:#d1d5db" title="Undo">↩</button>
+    <button class="btn" id="bnewgame" onclick="initGame()" style="background:#374151;color:#d1d5db" title="Nouvelle partie">↺</button>
+    <button class="btn" id="bhelp" onclick="showHelp()" style="background:#374151;color:#d1d5db" title="Aide">?</button>
+    <button class="btn" id="bapps" onclick="showApps()" style="background:#374151;color:#d1d5db" title="Nos apps">📱</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<!-- MODAL AIDE -->
+<div id="helpov" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.92);overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="max-width:480px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div id="help-title" style="font-size:20px;font-weight:700;color:var(--gold)">Aide — TilePlay</div>
+      <button onclick="closeHelp()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:28px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="help-body" style="color:rgba(255,255,255,.85);font-size:14px;line-height:1.7"></div>
+  </div>
+</div>
+
+<div id="passov">
+  <div style="font-size:52px">🙈</div>
+  <div id="pwho"></div>
+  <div id="pass-sub" style="font-size:14px;color:rgba(255,255,255,.5)">La main adverse est cachée.</div>
+  <button id="pok" onclick="doAfterPass()">Je suis prêt !</button>
+</div>
+
+<div id="winov">
+  <div style="font-size:64px">🏆</div>
+  <div id="wmsg"></div>
+  <button id="wrep" onclick="initGame()">Rejouer</button>
+</div>
+
+<script>
+const COLS=['red','blue','black','orange'];
+const LBL={red:'Rouge',blue:'Bleu',black:'Noir',orange:'Orange'};
+
+let G={};
+
+function makeTiles(){
+  const t=[];
+  for(const c of COLS)for(let n=1;n<=13;n++){
+    t.push({c,n,id:c+'_'+n+'_a'});
+    t.push({c,n,id:c+'_'+n+'_b'});
+  }
+  t.push({c:'joker',n:0,id:'joker_1'},{c:'joker',n:0,id:'joker_2'});
+  return t;
+}
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[b[i],b[j]]=[b[j],b[i]];}
+  return b;
+}
+function dc(o){return JSON.parse(JSON.stringify(o));}
+
+function initGame(){
+  const tiles=shuffle(makeTiles());
+  G={
+    pool:[...tiles],
+    hands:[[],[]],
+    board:[],
+    allTiles:{},
+    bkBoard:[],
+    bkHand:[],
+    curP:0,
+    turn:1,
+    scores:[0,0],
+    firstPlay:[true,true],
+    history:[],    // pile de snapshots {board, hand} pour undo
+    sel:[],
+    drawnId:null,
+    drew:false,
+    nextP:1
+  };
+  tiles.forEach(t=>{G.allTiles[t.id]=t;});
+  for(let i=0;i<14;i++){
+    G.hands[0].push(G.pool.pop().id);
+    G.hands[1].push(G.pool.pop().id);
+  }
+  G.bkBoard=[];
+  G.bkHand=dc(G.hands[0]);
+  document.getElementById('passov').classList.remove('on');
+  document.getElementById('winov').classList.remove('on');
+  render();
+}
+
+/* ── Validation ── */
+function tilesOf(ids){return ids.map(id=>G.allTiles[id]);}
+
+function isRun(ids){
+  // Valide une suite en tenant compte de l'ORDRE des tuiles
+  if(ids.length<3)return false;
+  const set=tilesOf(ids);
+  const nonJ=set.filter(t=>t.c!=='joker');
+  if(nonJ.length===0)return true;
+  if(new Set(nonJ.map(t=>t.c)).size!==1)return false;
+  const len=ids.length;
+  // Assigner une valeur à chaque tuile selon sa position dans le set
+  // On cherche le start tel que set[i] = start+i (jokers acceptent n'importe quelle valeur)
+  // On déduit start depuis les non-jokers
+  const candidates=new Set();
+  set.forEach((t,i)=>{ if(t.c!=='joker') candidates.add(t.n-i); });
+  for(const start of candidates){
+    if(start<1)continue; // commence avant 1
+    if(start+len-1>13)continue; // finit après 13
+    // vérifier que chaque non-joker correspond
+    const ok=set.every((t,i)=>t.c==='joker'||t.n===start+i);
+    if(ok)return true;
+  }
+  return false;
+}
+function isGroup(ids){
+  if(ids.length<3||ids.length>4)return false;
+  const set=tilesOf(ids);
+  const nonJ=set.filter(t=>t.c!=='joker');
+  if(nonJ.length===0)return true;
+  if(new Set(nonJ.map(t=>t.n)).size!==1)return false;
+  return new Set(nonJ.map(t=>t.c)).size===nonJ.length;
+}
+function isValid(ids){
+  if(!ids||ids.length<3)return false;
+  return isRun(ids)||isGroup(ids);
+}
+
+/* ── Render ── */
+function render(){
+  const p=G.curP;
+  document.getElementById('topbar').className=p===0?'p1':'p2';
+  document.getElementById('tnum').textContent=t().tour+' '+G.turn;
+  updateStaticText();
+  // cercle actif
+  const c1=document.getElementById('j1circle');
+  const c2=document.getElementById('j2circle');
+  c1.style.border=G.curP===0?'2px solid #fff':'2px solid transparent';
+  c1.style.boxShadow=G.curP===0?'0 0 8px rgba(255,255,255,.6)':'none';
+  c2.style.border=G.curP===1?'2px solid #fff':'2px solid transparent';
+  c2.style.boxShadow=G.curP===1?'0 0 8px rgba(255,255,255,.6)':'none';
+  document.getElementById('s1').textContent=G.scores[0];
+  document.getElementById('s2').textContent=G.scores[1];
+  document.getElementById('htitle').textContent=t().main+' — '+t().joueur+' '+(G.curP+1);
+
+  // hint
+  const hint=document.getElementById('hint');
+  const sinfo=document.getElementById('sinfo');
+  if(G.sel.length>0){
+    const lbls=G.sel.map(id=>{const t=G.allTiles[id];return t.c==='joker'?'★':(LBL[t.c]+' '+t.n);});
+    hint.innerHTML=t().hint_sel(lbls.join(', '));
+    sinfo.textContent=G.sel.length+' tuile'+(G.sel.length>1?'s':'')+' sélectionnée'+(G.sel.length>1?'s':'');
+  } else if(G.drew){
+    hint.innerHTML=t().hint_drew;
+    sinfo.textContent='';
+  } else {
+    hint.innerHTML=t().hint_default;
+    sinfo.textContent='';
+  }
+
+  document.getElementById('bdraw').style.display=G.drew?'none':'';
+  document.getElementById('bswitch').style.display=G.drew?'':'none';
+
+  // plateau — sets J1 en bas, sets J2 en haut (retournés)
+  // G.board = [{owner:0|1, ids:[...]}]
+  const sc1=document.getElementById('sets');
+  const sc2=document.getElementById('sets2');
+  sc1.innerHTML='';sc2.innerHTML='';
+  G.board.forEach((entry,si)=>{
+    const d=document.createElement('div');
+    d.className='bset'+(G.sel.length>0?' drop':'');
+    entry.ids.forEach((id,ti)=>d.appendChild(makeBoardTileEl(id,si,ti)));
+    // zone drop à la fin du set
+    const dropZone=document.createElement('div');
+    dropZone.style.cssText='min-width:36px;min-height:56px;display:flex;align-items:center;justify-content:center;opacity:0.4;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;flex-shrink:0';
+    dropZone.textContent=G.sel.length>0?'+':'';
+    dropZone.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(G.sel.length>0){
+        if(G.firstPlay[G.curP]&&entry.owner!==G.curP){
+          setMsg(t().err_30first);return;
+        }
+        appendToSet(si);
+      }
+    });
+    d.appendChild(dropZone);
+    d.addEventListener('click',e=>{
+      if(e.target===d&&G.sel.length>0)appendToSet(si);
+    });
+    // owner 1 → zone du haut (retournée)
+    (entry.owner===1?sc2:sc1).appendChild(d);
+  });
+
+  // main
+  sortHand(p);
+  const ht=document.getElementById('htiles');
+  ht.innerHTML='';
+  G.hands[p].forEach((id,i)=>ht.appendChild(makeHandTileEl(id,i)));
+}
+
+function sortHand(p){
+  G.hands[p].sort((a,b)=>{
+    const ta=G.allTiles[a],tb=G.allTiles[b];
+    if(ta.c==='joker'&&tb.c!=='joker')return 1;
+    if(tb.c==='joker'&&ta.c!=='joker')return-1;
+    const ci=COLS.indexOf(ta.c)-COLS.indexOf(tb.c);
+    return ci!==0?ci:ta.n-tb.n;
+  });
+}
+
+function makeTileEl(id){
+  const t=G.allTiles[id];
+  const d=document.createElement('div');
+  d.className='tile';
+  d.dataset.c=t.c;
+  d.textContent=t.c==='joker'?'★':t.n;
+  const selIdx=G.sel.indexOf(id);
+  if(selIdx>=0){
+    d.classList.add('sel');
+    // pas de numéro sur les tuiles sélectionnées
+  }
+  if(G.drawnId===id)d.classList.add('nw');
+  return d;
+}
+
+function makeHandTileEl(id){
+  const d=makeTileEl(id);
+  d.addEventListener('click',e=>{
+    e.stopPropagation();
+    const idx=G.sel.indexOf(id);
+    if(idx>=0){
+      // désélectionner
+      G.sel.splice(idx,1);
+    } else {
+      // ajouter à la sélection
+      G.sel.push(id);
+    }
+    render();setMsg('');
+  });
+  return d;
+}
+
+function makeBoardTileEl(id,si,ti){
+  const d=makeTileEl(id);
+  d.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(G.sel.length>0&&!G.sel.includes(id)){
+      const entry=G.board[si];
+      const setIds=entry.ids;
+      const clickedTile=G.allTiles[id];
+      const lastTi=setIds.length-1;
+
+      // ── Règle : pas modifier le set adverse avant 30 pts ──
+      if(G.firstPlay[G.curP] && entry.owner!==G.curP){
+        setMsg(t().err_adv);
+        render();return;
+      }
+
+      // ── Récupération joker ──
+      if(clickedTile.c==='joker'){
+        const setTiles=setIds.map(tid=>G.allTiles[tid]);
+        const nonJ=setTiles.filter(t=>t.c!=='joker');
+        const selTiles=G.sel.map(tid=>G.allTiles[tid]);
+        // Autorisé si : suite (isRun) avec 1 tuile sélectionnée qui compléte correctement
+        // OU groupe de 4 couleurs identiques
+        // Groupe : toutes les tuiles sélectionnées + nonJ doivent former un groupe de 4
+        const wouldBeGroup=(()=>{
+          // on retire le joker et on ajoute les tuiles sélectionnées
+          const resultIds=[...setIds.filter(x=>x!==id),...G.sel];
+          if(resultIds.length!==4)return false;
+          return isGroup(resultIds);
+        })();
+        // Pour une suite : la tuile posée doit permettre de retirer le joker
+        // = vérifier que sans le joker + avec la nouvelle tuile c est toujours une suite valide
+        const wouldBeRun=(()=>{
+          if(G.sel.length!==1||selTiles[0].c==='joker')return false;
+          // tentative : remplacer joker par selTiles[0]
+          const testIds=setIds.map(x=>x===id?G.sel[0]:x);
+          return isRun(testIds);
+        })();
+        if(!wouldBeGroup && !wouldBeRun){
+          setMsg(t().err_joker);
+          render();return;
+        }
+        saveSnap();
+        removeSelFromSources();
+        const pos=G.board[si].ids.indexOf(id);
+        G.board[si].ids.splice(pos,1);
+        G.hands[G.curP].push(id);
+        G.board[si].ids.splice(pos,0,...G.sel);
+        G.sel=[];
+        setMsg(t().joker_ok);
+        render();return;
+      }
+
+      // ── Vérifier que l'ajout est valide ──
+      const selTilesAdd=G.sel.map(sid=>G.allTiles[sid]);
+      const setTilesNow=setIds.map(sid=>G.allTiles[sid]);
+      const nonJNow=setTilesNow.filter(t=>t.c!=='joker');
+
+      // Détecter le type de set actuel
+      const setIsGroup=isGroup(setIds);
+      const setIsRun=isRun(setIds);
+
+      // Règle groupe : chiffre identique obligatoire, max 4
+      if(setIsGroup && !setIsRun){
+        const groupNum=nonJNow[0].n;
+        const badTile=selTilesAdd.find(t=>t.c!=='joker'&&t.n!==groupNum);
+        if(badTile){setMsg(t().err_group_num);render();return;}
+        if(setIds.length+G.sel.length>4){setMsg(t().err_group_max);render();return;}
+      }
+
+      // Vérifier que le résultat final est valide
+      {
+        const testIds=ti===0?[...G.sel,...setIds]:[...setIds,...G.sel];
+        if(!isValid(testIds)){setMsg(t().err_run);render();return;}
+      }
+
+      // Placement début ou fin
+      if(ti===0){
+        saveSnap();
+        removeSelFromSources();
+        G.board[si].ids.splice(0,0,...G.sel);
+        G.sel=[];
+        setMsg('');render();
+      } else if(ti===lastTi){
+        saveSnap();
+        removeSelFromSources();
+        G.board[si].ids.push(...G.sel);
+        G.sel=[];
+        setMsg('');render();
+      } else {
+        setMsg(t().err_ends);
+        render();
+      }
+    } else {
+      // sélectionner/désélectionner
+      const idx=G.sel.indexOf(id);
+      if(idx>=0)G.sel.splice(idx,1);
+      else G.sel.push(id);
+      setMsg('');render();
+    }
+  });
+  return d;
+}
+
+/* ── Manipulation ── */
+function removeSelFromSources(){
+  G.sel.forEach(id=>{
+    const hi=G.hands[G.curP].indexOf(id);
+    if(hi>=0){G.hands[G.curP].splice(hi,1);return;}
+    for(let si=0;si<G.board.length;si++){
+      const ti=G.board[si].ids.indexOf(id);
+      if(ti>=0){
+        G.board[si].ids.splice(ti,1);
+        if(G.board[si].ids.length===0)G.board.splice(si,1);
+        return;
+      }
+    }
+  });
+}
+
+/* ── Historique undo ── */
+function saveSnap(){
+  G.history.push({board:dc(G.board), hand:dc(G.hands[G.curP])});
+  if(G.history.length>20)G.history.shift();
+  document.getElementById('bundo').disabled=false;
+}
+
+function doUndo(){
+  if(G.history.length===0){setMsg(t().undo_empty);return;}
+  const snap=G.history.pop();
+  G.board=snap.board;
+  G.hands[G.curP]=snap.hand;
+  G.sel=[];
+  document.getElementById('bundo').disabled=G.history.length===0;
+  render();setMsg('');
+}
+
+function appendToSet(si){
+  if(G.sel.length===0)return;
+  const entry=G.board[si];
+  const setIds=entry.ids;
+  const selTiles=G.sel.map(id=>G.allTiles[id]);
+  const nonJ=setIds.map(id=>G.allTiles[id]).filter(t=>t.c!=='joker');
+  // groupe : vérif chiffre identique + max 4
+  if(isGroup(setIds)&&!isRun(setIds)){
+    if(nonJ.length>0){
+      const groupNum=nonJ[0].n;
+      if(selTiles.find(t=>t.c!=='joker'&&t.n!==groupNum)){setMsg(t().err_group_num);return;}
+    }
+    if(setIds.length+G.sel.length>4){setMsg(t().err_group_max);return;}
+  }
+  // toujours vérifier que le résultat final est valide
+  const testIds=[...setIds,...G.sel];
+  if(!isValid(testIds)){setMsg(t().err_run);return;}
+  saveSnap();
+  removeSelFromSources();
+  G.board[si].ids.push(...G.sel);
+  G.sel=[];
+  render();setMsg('');
+}
+
+function doNewSet(){
+  if(G.sel.length===0)return;
+  saveSnap();
+  removeSelFromSources();
+  G.board.push({owner:G.curP, ids:[...G.sel]});
+  G.sel=[];
+  render();setMsg('');
+}
+
+/* ── Actions ── */
+function placedIds(){
+  // Diff par comptage d'occurrences (gère les doublons comme joker_1 présent 2x)
+  const bkCount={};
+  G.bkBoard.flatMap(e=>e.ids).forEach(id=>{bkCount[id]=(bkCount[id]||0)+1;});
+  const nowCount={};
+  G.board.flatMap(e=>e.ids).forEach(id=>{nowCount[id]=(nowCount[id]||0)+1;});
+  const result=[];
+  for(const id of Object.keys(nowCount)){
+    const diff=(nowCount[id]||0)-(bkCount[id]||0);
+    for(let i=0;i<diff;i++)result.push(id);
+  }
+  return result;
+}
+
+function tileScore(id,setIds){
+  const t=G.allTiles[id];
+  if(t.c!=='joker')return t.n;
+  if(!setIds)return 30; // joker en main = 30
+  // valeur du joker = valeur des autres tuiles du set
+  const nonJ=setIds.filter(i=>G.allTiles[i].c!=='joker');
+  if(nonJ.length===0)return 30;
+  // groupe : même chiffre → joker vaut ce chiffre
+  const nums=nonJ.map(i=>G.allTiles[i].n);
+  const uniq=[...new Set(nums)];
+  if(uniq.length===1)return uniq[0];
+  // suite : trouver le chiffre manquant
+  const sorted=nums.sort((a,b)=>a-b);
+  // compter les jokers dans le set
+  const jokerCount=setIds.filter(i=>G.allTiles[i].c==='joker').length;
+  // reconstituer la suite complète
+  const min=sorted[0],max=sorted[sorted.length-1];
+  // chercher les trous
+  const holes=[];
+  for(let n=min;n<=max;n++) if(!sorted.includes(n)) holes.push(n);
+  // si ce joker remplit un trou connu
+  const myIdx=setIds.indexOf(id);
+  if(holes.length>0)return holes[0];
+  // joker aux extrémités
+  return sorted[0]>1?sorted[0]-1:sorted[sorted.length-1]+1;
+}
+
+function doValidate(){
+  // on peut valider même après avoir pioché
+  const placed=placedIds();
+  if(placed.length===0){setMsg(t().err_nothing);return;}
+
+  const placedSet=new Set(placed);
+  const invalid=G.board.filter(e=>e.ids.some(id=>placedSet.has(id))&&!isValid(e.ids));
+  if(invalid.length>0){
+    setMsg(t().err_invalid);
+    return;
+  }
+
+  if(G.firstPlay[G.curP]){
+    const pts=placed.reduce((a,id)=>{
+      const entry=G.board.find(e=>e.ids.includes(id));
+      return a+tileScore(id, entry?entry.ids:null);
+    },0);
+    if(pts<30){
+      setMsg(t().err_30pts(pts));
+      G.board=dc(G.bkBoard);
+      placed.forEach(id=>G.hands[G.curP].push(id));
+      G.sel=[];render();return;
+    }
+  }
+
+  G.scores[G.curP]+=placed.reduce((a,id)=>{
+    const entry=G.board.find(e=>e.ids.includes(id));
+    return a+tileScore(id, entry?entry.ids:null);
+  },0);
+  G.firstPlay[G.curP]=false;
+  G.bkBoard=dc(G.board);
+  G.drawnId=null;G.drew=false;G.sel=[];
+  if(G.hands[G.curP].length===0){endGame();return;}
+  showPass();
+}
+
+function doDraw(){
+  if(placedIds().length>0){setMsg(t().err_cancel_placed);return;}
+  if(G.pool.length===0){setMsg(t().err_pool);return;}
+  const tile=G.pool.pop();
+  G.allTiles[tile.id]=tile;
+  G.hands[G.curP].push(tile.id);
+  G.drawnId=tile.id;
+  G.drew=true;
+  G.bkBoard=dc(G.board);
+  G.sel=[];
+  setMsg('');render();
+}
+
+function doCancel(){
+  // rembobiner sans pénalité de score (les tuiles n'ont pas encore été validées)
+  G.board=dc(G.bkBoard);
+  G.hands[G.curP]=dc(G.bkHand);
+  G.sel=[];G.drawnId=null;G.history=[];
+  document.getElementById('bundo').disabled=true;
+  render();setMsg(t().cancelled);
+}
+
+function showPass(){
+  G.sel=[];
+  G.nextP=(G.curP+1)%2;
+  doAfterPass(); // TEST MODE : pas d'écran intermédiaire
+}
+
+function doAfterPass(){
+  document.getElementById('passov').classList.remove('on');
+  G.curP=G.nextP;
+  if(G.curP===0)G.turn++;
+  G.bkBoard=dc(G.board);
+  G.bkHand=dc(G.hands[G.curP]);
+  G.drawnId=null;G.sel=[];G.drew=false;G.history=[];
+  document.getElementById('bundo').disabled=true;
+  render();setMsg('');
+}
+
+function updateStaticText(){
+  const el=document.getElementById('pass-sub');
+  if(el)el.textContent=t().pass_sub;
+  const pok=document.getElementById('pok');
+  if(pok)pok.textContent=t().pass_ready;
+  const wrep=document.getElementById('wrep');
+  if(wrep)wrep.textContent=t().replay;
+}
+
+function endGame(){
+  const loser=(G.curP+1)%2;
+  const pen=G.hands[loser].reduce((a,id)=>a+tileScore(id),0);
+  document.getElementById('wmsg').textContent=t().wins(G.curP+1,loser+1,pen);
+  document.getElementById('winov').classList.add('on');
+}
+
+function setMsg(m){document.getElementById('msg').textContent=m;}
+function boardBgClick(e){
+  if(e.target!==document.getElementById('board'))return;
+  if(G.sel.length>0)doNewSet();
+}
+
+// ── Apps catalog ─────────────────────────────────────────────
+var APPS=[
+  {id:6768068634,name:'Peintres Célèbres'},
+  {id:6767810270,name:'Iles du Monde'},
+  {id:6768003416,name:'Explorateurs du Monde'},
+  {id:6767492967,name:'Institutions Mondiales'},
+  {id:6767135193,name:'Auteurs de BD'},
+  {id:6766260978,name:'Histoire Informatique'},
+  {id:6766261703,name:'Micro-informatique'},
+  {id:6763507194,name:'Hotels RoofTop'},
+  {id:6762618424,name:'Ponts du Monde'},
+  {id:6763076110,name:'Paquebots'},
+  {id:6763069304,name:'Avions de Légende'},
+  {id:6763071567,name:'Voitures'},
+  {id:6762077646,name:'Flip Board'},
+  {id:6762632868,name:'Trains'},
+  {id:6762823383,name:'Châteaux Loire'},
+  {id:6762598304,name:'Mers & Océans'},
+  {id:6762594201,name:'Détroits'},
+  {id:6762558969,name:'ColorCode'},
+  {id:6762552826,name:'Lexigo'},
+  {id:6762542395,name:'Conquêtes'},
+  {id:6762522136,name:'Dynasties Ch.'},
+  {id:6762452564,name:'Dynasties Ru.'},
+  {id:6762370541,name:'États-Unis'},
+  {id:6762091681,name:'Bataille Nav.'},
+  {id:6762098486,name:'Familles Roy.'},
+  {id:6762263227,name:'Leaders Eu.'},
+  {id:6762346365,name:'Pays UE'},
+  {id:6762256169,name:'Présidents US'},
+  {id:6762076518,name:'Dames'},
+  {id:6761993002,name:'Comédie Fr.'},
+  {id:6761769529,name:'Institut Fr.'},
+  {id:6761324444,name:'Présidents Fr.'},
+  {id:6761709149,name:'Saint-Denis'},
+  {id:6761685637,name:'Arbres Fr.'},
+  {id:6761363063,name:'Sénat Paris'},
+  {id:6761656628,name:'Compositeurs'},
+  {id:6761374601,name:'Maréchaux'},
+  {id:6761322546,name:'Rois de Fr.'},
+  {id:6761361079,name:'Assemblée'},
+  {id:6761335268,name:'Panthéon'},
+  {id:1483084001,name:'Belote Calc'},
+  {id:6760751055,name:'Cimetières'},
+  {id:1481989301,name:'Tarots Calc'},
+  {id:6761334922,name:'Académie Fr.'},
+  {id:6761293938,name:'Scènes Paris'},
+  {id:6761271324,name:'MediSafe'},
+  {id:6760617965,name:'MesRestaurants'},
+  {id:6760126279,name:'Cave Manager'},
+  {id:6760890465,name:'Musées Paris'},
+  {id:6760929391,name:'Théâtres Paris'},
+  {id:6759219383,name:'Frigo Manager'},
+  {id:1475884625,name:'Toi ou Moi'},
+  {id:6761421276,name:'Capitales Eu.'},
+  {id:6762006105,name:'Iconic Covers'}
+];
+
+function showApps(){
+  const grid=document.getElementById('apps-grid');
+  if(grid.childElementCount>0){document.getElementById('appsov').style.display='block';return;}
+  APPS.forEach(app=>{
+    const a=document.createElement('a');
+    a.href='https://apps.apple.com/app/id'+app.id;
+    a.target='_blank';
+    a.style.cssText='display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;';
+    const img=document.createElement('img');
+    img.style.cssText='width:56px;height:56px;border-radius:13px;background:#1e293b;';
+    img.alt=app.name;
+    // load icon via JSONP
+    const cbName='appcb'+app.id;
+    window[cbName]=function(d){
+      if(d.results&&d.results[0])img.src=d.results[0].artworkUrl60;
+    };
+    const s=document.createElement('script');
+    s.src='https://itunes.apple.com/lookup?id='+app.id+'&callback='+cbName;
+    document.body.appendChild(s);
+    const name=document.createElement('div');
+    name.style.cssText='font-size:8px;color:rgba(255,255,255,.7);text-align:center;line-height:1.2;width:64px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;';
+    name.textContent=app.name;
+    a.appendChild(img);
+    a.appendChild(name);
+    grid.appendChild(a);
+  });
+  document.getElementById('appsov').style.display='block';
+}
+function closeApps(){
+  document.getElementById('appsov').style.display='none';
+}
+
+// ── Langues ──────────────────────────────────────────────────
+let LANG='fr';
+const T={
+  fr:{
+    tour:'Tour',joueur:'Joueur',main:'Main',
+    hint_default:'Sélectionne une ou plusieurs tuiles, puis clique sur un set pour poser.',
+    hint_sel:(l)=>'<b>'+l+' sélectionné(s)</b> — clique sur un set pour poser.',
+    hint_drew:'Tuile piochée ! Pose des tuiles ou clique ⇄ pour passer.',
+    pass_sub:'La main adverse est cachée.',
+    pass_ready:'Je suis prêt !',
+    replay:'Rejouer',
+    wins:(p,loser,pen)=>'Joueur '+p+' gagne !\nJoueur '+loser+' perd '+pen+' pts',
+    pass_who:(p)=>'Passe à Joueur '+p+' !',
+    err_30pts:(n)=>'1ère pose : min 30 pts ('+n+' pts).',
+    err_invalid:'Set invalide (min 3, suite ou groupe).',
+    err_30first:'Pose tes 30 pts en premier.',
+    err_joker:'Ce joker ne peut pas être remplacé ici.',
+    joker_ok:'Joker récupéré !',
+    err_group_num:'Groupe : même chiffre requis.',
+    err_group_max:'Un groupe ne dépasse pas 4 tuiles.',
+    err_run:'Suite invalide ici.',
+    err_ends:'Début ou fin seulement.',
+    err_nothing:'Pose au moins une tuile, ou pioche pour passer.',
+    err_pool:'Pioche vide !',
+    err_cancel_placed:'Annule tes placements avant de piocher.',
+    cancelled:'Tour annulé.',
+    undo_empty:'Rien à annuler.',
+    err_adv:'Pose tes 30 pts avant de toucher les sets adverses.',
+  },
+  en:{
+    tour:'Turn',joueur:'Player',main:'Hand',
+    hint_default:'Select one or more tiles, then tap a set to place them.',
+    hint_sel:(l)=>'<b>'+l+' selected</b> — tap a set to place.',
+    hint_drew:'Tile drawn! Place tiles or tap ⇄ to pass.',
+    pass_sub:'The opponent hand is hidden.',
+    pass_ready:'I am ready!',
+    replay:'Play again',
+    wins:(p,loser,pen)=>'Player '+p+' wins!\nPlayer '+loser+' loses '+pen+' pts',
+    pass_who:(p)=>'Pass to Player '+p+'!',
+    err_30pts:(n)=>'First meld: min 30 pts ('+n+' pts).',
+    err_invalid:'Invalid set (min 3, run or group).',
+    err_30first:'Score 30 pts first.',
+    err_joker:'This joker cannot be replaced here.',
+    joker_ok:'Joker retrieved!',
+    err_group_num:'Group: same number required.',
+    err_group_max:'A group cannot exceed 4 tiles.',
+    err_run:'Invalid run here.',
+    err_ends:'Start or end only.',
+    err_nothing:'Place at least one tile, or draw to pass.',
+    err_pool:'Draw pile empty!',
+    err_cancel_placed:'Cancel your placements before drawing.',
+    cancelled:'Turn cancelled.',
+    undo_empty:'Nothing to undo.',
+    err_adv:'Score 30 pts before touching opponent sets.',
+  }
+};
+function t(){return T[LANG];}
+function toggleLang(){
+  LANG=LANG==='fr'?'en':'fr';
+  document.getElementById('blang').textContent=LANG==='fr'?'🇬🇧':'🇫🇷';
+  render();
+}
+
+
+// ── Aide ──────────────────────────────────────────────────────
+const HELP={
+  fr:{
+    title:'Aide — TilePlay',
+    body:`
+<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">
+🎮 <b>Application 2 joueurs sur le même appareil.</b><br>
+Les deux joueurs jouent à tour de rôle sur cet écran, en se passant l'appareil.
+</div>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:8px">🎯 But du jeu</div>
+<p>Être le premier à poser toutes ses tuiles sur le tapis.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🃏 Les combinaisons</div>
+<p><b>Suite</b> — 3 tuiles ou plus de la même couleur, chiffres consécutifs.<br>
+Ex : Rouge 4-5-6 ✓</p>
+<p style="margin-top:8px"><b>Groupe</b> — 3 ou 4 tuiles du même chiffre, couleurs différentes.<br>
+Ex : 7 Rouge + 7 Bleu + 7 Noir ✓</p>
+<p style="margin-top:8px"><b>Joker ★</b> — remplace n'importe quelle tuile. Vaut la valeur de la tuile remplacée.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🚀 Première mise</div>
+<p>Pour poser pour la première fois, tes tuiles doivent totaliser <b>au moins 30 points</b> (valeurs des tuiles posées).</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🎮 Commandes</div>
+<table style="width:100%;border-collapse:collapse">
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✓</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Valider le tour</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🂠</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Piocher une tuile (passe le tour)</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">⇄</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Changer de joueur après avoir pioché</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✕</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Annuler toutes les poses du tour</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↩</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Annuler la dernière pose uniquement</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↺</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Nouvelle partie</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🇬🇧</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Basculer en anglais</td></tr>
+<tr><td style="padding:6px 0"><b style="font-size:18px">?</b></td><td style="padding:6px 8px">Cette aide</td></tr>
+</table>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">📐 Comment poser</div>
+<p>1. Clique une ou plusieurs tuiles dans ta main (elles se soulèvent).<br>
+2. Clique sur un set du tapis pour y ajouter tes tuiles à la fin.<br>
+3. Clique sur la <b>1ère tuile</b> d'un set pour insérer au début.<br>
+4. Clique sur la <b>dernière tuile</b> ou la zone <b>+</b> pour ajouter à la fin.<br>
+5. Clique sur <b>✓ Valider</b> pour finir ton tour.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">♟ Récupérer un joker</div>
+<p>Tu peux récupérer le joker d'un set si :<br>
+• <b>Suite</b> : tu le remplaces par la tuile manquante de la suite.<br>
+• <b>Groupe de 4</b> : tu poses la 4ème couleur pour compléter le groupe.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🏆 Fin de partie</div>
+<p>Le premier à vider sa main gagne. L'adversaire comptabilise en négatif la somme de ses tuiles restantes (joker = 30 pts).</p>
+`
+  },
+  en:{
+    title:'Help — TilePlay',
+    body:`
+<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">
+🎮 <b>2-player app on the same device.</b><br>
+Both players take turns on this screen, passing the device between turns.
+</div>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:8px">🎯 Objective</div>
+<p>Be the first to play all your tiles onto the table.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🃏 Valid sets</div>
+<p><b>Run</b> — 3 or more tiles of the same color with consecutive numbers.<br>
+Ex: Red 4-5-6 ✓</p>
+<p style="margin-top:8px"><b>Group</b> — 3 or 4 tiles of the same number in different colors.<br>
+Ex: 7 Red + 7 Blue + 7 Black ✓</p>
+<p style="margin-top:8px"><b>Joker ★</b> — replaces any tile. Worth the value of the tile it replaces.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🚀 Initial meld</div>
+<p>Your first play must total <b>at least 30 points</b> using only your own tiles.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🎮 Controls</div>
+<table style="width:100%;border-collapse:collapse">
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✓</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Validate turn</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🂠</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Draw a tile (skips turn)</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">⇄</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Switch player after drawing</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✕</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Cancel all placements this turn</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↩</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Undo last placement only</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↺</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">New game</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🇫🇷</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Switch to French</td></tr>
+<tr><td style="padding:6px 0"><b style="font-size:18px">?</b></td><td style="padding:6px 8px">This help</td></tr>
+</table>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">📐 How to place tiles</div>
+<p>1. Tap one or more tiles in your hand (they lift up).<br>
+2. Tap a set on the board to add your tiles at the end.<br>
+3. Tap the <b>1st tile</b> of a set to insert at the beginning.<br>
+4. Tap the <b>last tile</b> or the <b>+</b> zone to add at the end.<br>
+5. Tap <b>✓ Validate</b> to end your turn.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">♟ Retrieving a joker</div>
+<p>You can take a joker from a set if:<br>
+• <b>Run</b>: you replace it with the missing tile in the run.<br>
+• <b>Group of 4</b>: you play the 4th color to complete the group.</p>
+
+<div style="font-size:16px;font-weight:700;color:var(--gold);margin:14px 0 8px">🏆 End of game</div>
+<p>The first player to empty their hand wins. The opponent scores negative points equal to the sum of their remaining tiles (joker = 30 pts).</p>
+`
+  }
+};
+
+function showHelp(){
+  const h=HELP[LANG];
+  document.getElementById('help-title').textContent=h.title;
+  document.getElementById('help-body').innerHTML=h.body;
+  document.getElementById('helpov').style.display='block';
+}
+function closeHelp(){
+  document.getElementById('helpov').style.display='none';
+}
+
+initGame();
+</script>
+
+<!-- MODAL APPS -->
+<div id="appsov" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.95);overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="max-width:500px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:var(--gold)">Nos applications</div>
+      <button onclick="closeApps()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:28px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="apps-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 8px"></div>
+    <div style="margin-top:20px;text-align:center">
+      <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/fr-fr" style="height:36px" alt="App Store">
+    </div>
+  </div>
+</div>
+</body>
+</html>
