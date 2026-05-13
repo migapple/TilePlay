@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>TilePlay</title>
+<title>Tuiles Numériques</title>
 <style>
 :root{--bg:#1a1a2e;--green:#2d6a2d;--gdark:#1a4a1a;--gold:#FFD700}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -37,10 +37,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 .tile{width:42px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;cursor:pointer;border:2px solid rgba(0,0,0,.2);box-shadow:0 2px 5px rgba(0,0,0,.4);flex-shrink:0;-webkit-user-select:none;user-select:none;transition:transform .12s,box-shadow .12s,outline .1s}
 .tile.sel{transform:translateY(-9px);box-shadow:0 10px 20px rgba(0,0,0,.45);outline:3px solid var(--gold);outline-offset:1px}
 .tile.nw{outline:3px solid #4CAF50;outline-offset:2px}
-.tile[data-c=red]{background:#E53935;color:#fff;border-color:#B71C1C}
-.tile[data-c=blue]{background:#1565C0;color:#fff;border-color:#0D47A1}
+.tile[data-c=red]{background:#C62828;color:#fff;border-color:#7f0000}
+.tile[data-c=blue]{background:#1976D2;color:#fff;border-color:#0D47A1}
 .tile[data-c=black]{background:#212121;color:#fff;border-color:#000}
-.tile[data-c=orange]{background:#E65100;color:#fff;border-color:#BF360C}
+.tile[data-c=orange]{background:#FF8F00;color:#fff;border-color:#E65100}
 .tile[data-c=joker]{background:linear-gradient(135deg,#7B1FA2,#1565C0);color:var(--gold);border-color:#4A148C;font-size:22px}
 
 /* sélection multiple : compteur sur la tuile */
@@ -79,24 +79,32 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 <div id="app">
   <div id="topbar" class="p1">
     <div style="display:flex;align-items:center;gap:8px"><div id="tnum">Tour 1</div><button id="blang" onclick="toggleLang()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0;line-height:1">🇬🇧</button></div>
-    <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:1px">TilePlay</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:1px">Tuiles Numériques</div>
     <div class="sc">
       <div id="p1ind" style="display:flex;align-items:center;gap:6px">
         <div id="j1circle" style="width:28px;height:28px;border-radius:50%;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid transparent">J1</div>
-        <span id="s1" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span>
+        <span id="s1" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span><span id="s1p" style="color:#4ade80;font-size:11px;font-weight:700;display:none"></span>
       </div>
       <div id="p2ind" style="display:flex;align-items:center;gap:6px">
         <div id="j2circle" style="width:28px;height:28px;border-radius:50%;background:#D85A30;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid transparent">J2</div>
-        <span id="s2" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span>
+        <span id="s2" style="font-weight:700;color:#fff">0</span><span style="opacity:.6;font-size:11px">pts</span><span id="s2p" style="color:#4ade80;font-size:11px;font-weight:700;display:none"></span>
       </div>
     </div>
   </div>
 
   <div id="board" onclick="boardBgClick(event)">
     <!-- Zone Joueur 2 en haut -->
-    <div id="sets2" style="display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;min-height:20px;margin-bottom:4px"></div>
-    <div style="border-top:2px dashed rgba(255,255,255,0.18);margin:6px 0"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      <div id="z2label" style="font-size:10px;font-weight:700;color:rgba(251,146,60,.7);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">J2</div>
+      <div style="flex:1;height:1px;background:rgba(251,146,60,.25)"></div>
+    </div>
+    <div id="sets2" style="display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;min-height:24px;margin-bottom:6px"></div>
+    <div style="border-top:2px dashed rgba(255,255,255,0.18);margin:4px 0 6px"></div>
     <!-- Zone Joueur 1 en bas -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      <div id="z1label" style="font-size:10px;font-weight:700;color:rgba(96,165,250,.7);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">J1</div>
+      <div style="flex:1;height:1px;background:rgba(96,165,250,.25)"></div>
+    </div>
     <div id="hint"></div>
     <div id="sets"></div>
   </div>
@@ -108,6 +116,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 
   <div id="act">
     <button class="btn" id="bval" onclick="doValidate()" title="Valider">✓</button>
+    <button class="btn" id="bsplit" onclick="doSplit()" style="display:none;background:#0e7490;color:#fff" title="Couper le set ici">✂</button>
+    <button class="btn" id="bnewset2" onclick="doNewSet()" style="display:none;background:#166534;color:#fff" title="Nouveau set">▣</button>
     <button class="btn" id="bdraw" onclick="doDraw()" title="Piocher">🂠</button>
     <button class="btn" id="bswitch" onclick="showPass()" style="display:none" title="Changer de joueur">⇄</button>
     <button class="btn" id="bcancel" onclick="doCancel()" title="Annuler">✕</button>
@@ -182,7 +192,8 @@ function initGame(){
     sel:[],
     drawnId:null,
     drew:false,
-    nextP:1
+    nextP:1,
+    has30:false
   };
   tiles.forEach(t=>{G.allTiles[t.id]=t;});
   for(let i=0;i<14;i++){
@@ -234,12 +245,32 @@ function isValid(ids){
   return isRun(ids)||isGroup(ids);
 }
 
+function placedPts(){
+  const pids=placedIds();
+  return pids.reduce((a,id)=>{
+    const entry=G.board.find(e=>e.ids.includes(id));
+    return a+tileScore(id,entry?entry.ids:null);
+  },0);
+}
+function computeHas30(){
+  if(!G.firstPlay[G.curP])return true;
+  const pts=placedPts();
+  return pts>=30;
+}
+
 /* ── Render ── */
 function render(){
   const p=G.curP;
   document.getElementById('topbar').className=p===0?'p1':'p2';
   document.getElementById('tnum').textContent=t().tour+' '+G.turn;
   updateStaticText();
+  const at=document.getElementById('apptitle');
+  if(at)at.textContent=LANG==='fr'?'Tuiles Numériques':'Number Tiles';
+  // labels zones tapis
+  const z1=document.getElementById('z1label');
+  const z2=document.getElementById('z2label');
+  if(z1){z1.style.opacity=G.curP===0?'1':'0.4';}
+  if(z2){z2.style.opacity=G.curP===1?'1':'0.4';}
   // cercle actif
   const c1=document.getElementById('j1circle');
   const c2=document.getElementById('j2circle');
@@ -249,6 +280,20 @@ function render(){
   c2.style.boxShadow=G.curP===1?'0 0 8px rgba(255,255,255,.6)':'none';
   document.getElementById('s1').textContent=G.scores[0];
   document.getElementById('s2').textContent=G.scores[1];
+  // points en cours ce tour
+  const pendingPts=placedPts();
+  const hasFirstPlay=G.firstPlay[G.curP];
+  const p1p=document.getElementById('s1p');
+  const p2p=document.getElementById('s2p');
+  [p1p,p2p].forEach(el=>el.style.display='none');
+  if(pendingPts>0){
+    const el=G.curP===0?p1p:p2p;
+    el.textContent=' +'+pendingPts+(hasFirstPlay&&pendingPts<30?' ('+pendingPts+'/30)':'');
+    el.style.display='';
+    el.style.color=(!hasFirstPlay||pendingPts>=30)?'#4ade80':'#fbbf24';
+  }
+  // débloquer sets adverses si 30pts atteints cette pose
+  G.has30=computeHas30();
   document.getElementById('htitle').textContent=t().main+' — '+t().joueur+' '+(G.curP+1);
 
   // hint
@@ -278,23 +323,19 @@ function render(){
     const d=document.createElement('div');
     d.className='bset'+(G.sel.length>0?' drop':'');
     entry.ids.forEach((id,ti)=>d.appendChild(makeBoardTileEl(id,si,ti)));
-    // zone drop à la fin du set
-    const dropZone=document.createElement('div');
-    dropZone.style.cssText='min-width:36px;min-height:56px;display:flex;align-items:center;justify-content:center;opacity:0.4;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;flex-shrink:0';
-    dropZone.textContent=G.sel.length>0?'+':'';
-    dropZone.addEventListener('click',e=>{
-      e.stopPropagation();
-      if(G.sel.length>0){
-        if(G.firstPlay[G.curP]&&entry.owner!==G.curP){
-          setMsg(t().err_30first);return;
-        }
+    // zone drop à la fin — toujours visible quand sélection active
+    if(G.sel.length>0){
+      const dropZone=document.createElement('div');
+      dropZone.style.cssText='min-width:44px;min-height:60px;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:24px;font-weight:700;cursor:pointer;flex-shrink:0;background:rgba(255,215,0,.15);border-radius:6px;margin-left:4px;border:1.5px dashed rgba(255,215,0,.5)';
+      dropZone.textContent='→';
+      dropZone.title='Ajouter à ce set';
+      dropZone.addEventListener('click',e=>{
+        e.stopPropagation();
+        if(!computeHas30()&&entry.owner!==G.curP){setMsg(t().err_30first);return;}
         appendToSet(si);
-      }
-    });
-    d.appendChild(dropZone);
-    d.addEventListener('click',e=>{
-      if(e.target===d&&G.sel.length>0)appendToSet(si);
-    });
+      });
+      d.appendChild(dropZone);
+    }
     // owner 1 → zone du haut (retournée)
     (entry.owner===1?sc2:sc1).appendChild(d);
   });
@@ -304,6 +345,14 @@ function render(){
   const ht=document.getElementById('htiles');
   ht.innerHTML='';
   G.hands[p].forEach((id,i)=>ht.appendChild(makeHandTileEl(id,i)));
+  // bouton ✂ : visible si exactement 1 tuile du plateau sélectionnée
+  const splitBtn=document.getElementById('bsplit');
+  const newsetBtn=document.getElementById('bnewset2');
+  if(splitBtn){
+    const selOnBoard=G.sel.length===1&&G.board.some(e=>e.ids.includes(G.sel[0]));
+    splitBtn.style.display=selOnBoard?'':'none';
+  }
+  if(newsetBtn)newsetBtn.style.display=G.sel.length>0?'':'none';
 }
 
 function sortHand(p){
@@ -359,7 +408,7 @@ function makeBoardTileEl(id,si,ti){
       const lastTi=setIds.length-1;
 
       // ── Règle : pas modifier le set adverse avant 30 pts ──
-      if(G.firstPlay[G.curP] && entry.owner!==G.curP){
+      if(!computeHas30()&&entry.owner!==G.curP){
         setMsg(t().err_adv);
         render();return;
       }
@@ -453,7 +502,31 @@ function makeBoardTileEl(id,si,ti){
 }
 
 /* ── Manipulation ── */
+function canRemoveFromBoard(ids, toRemove){
+  // Vérifie que retirer les tuiles 'toRemove' d'un set laisse au moins 0 tuile
+  // Si le set résultant a 1 ou 2 tuiles, ce n'est valide que si == 0 (set supprimé)
+  // Règle : doit rester 0 ou >=3 tuiles valides
+  const remaining=ids.filter(id=>!toRemove.includes(id));
+  if(remaining.length===0)return true; // set vide → supprimé
+  if(remaining.length<3)return false;  // 1 ou 2 tuiles → invalide
+  return isValid(remaining);           // doit rester valide
+}
+
 function removeSelFromSources(){
+  // D'abord vérifier que les retraits du plateau sont légaux
+  for(let si=0;si<G.board.length;si++){
+    const fromThisSet=G.sel.filter(id=>G.board[si].ids.includes(id));
+    if(fromThisSet.length>0){
+      // Vérifier que le set reste valide ou est entièrement vidé
+      const bkIds=G.bkBoard[si]?G.bkBoard[si].ids:[];
+      // On ne peut retirer que des tuiles qui étaient dans le backup (tuiles existantes)
+      // OU des tuiles posées ce tour (déjà sur le plateau ce tour)
+      if(!canRemoveFromBoard(G.board[si].ids, fromThisSet)){
+        setMsg('Il faut laisser au moins 3 tuiles valides dans ce set.');
+        return;
+      }
+    }
+  }
   G.sel.forEach(id=>{
     const hi=G.hands[G.curP].indexOf(id);
     if(hi>=0){G.hands[G.curP].splice(hi,1);return;}
@@ -501,7 +574,7 @@ function appendToSet(si){
   }
   // toujours vérifier que le résultat final est valide
   const testIds=[...setIds,...G.sel];
-  if(!isValid(testIds)){setMsg(t().err_run);return;}
+  if(!isValid(testIds)){setMsg(t().err_invalid);return;}
   saveSnap();
   removeSelFromSources();
   G.board[si].ids.push(...G.sel);
@@ -511,6 +584,18 @@ function appendToSet(si){
 
 function doNewSet(){
   if(G.sel.length===0)return;
+  // Si 3+ tuiles sélectionnées, vérifier que c'est un set valide
+  // Si <3 tuiles, on crée un set partiel (sera complété avant validation)
+  if(G.sel.length>=3&&!isValid(G.sel)){
+    setMsg(t().err_invalid);return;
+  }
+  // Vérifier que le retrait depuis le plateau est légal
+  for(let si=0;si<G.board.length;si++){
+    const fromThisSet=G.sel.filter(id=>G.board[si].ids.includes(id));
+    if(fromThisSet.length>0&&!canRemoveFromBoard(G.board[si].ids,fromThisSet)){
+      setMsg('Il faut laisser au moins 3 tuiles valides dans ce set.');return;
+    }
+  }
   saveSnap();
   removeSelFromSources();
   G.board.push({owner:G.curP, ids:[...G.sel]});
@@ -653,66 +738,73 @@ function endGame(){
 
 function setMsg(m){document.getElementById('msg').textContent=m;}
 function boardBgClick(e){
-  if(e.target!==document.getElementById('board'))return;
-  if(G.sel.length>0)doNewSet();
+  // Créer nouveau set si on clique sur le fond (pas sur une tuile ou un set)
+  const tgt=e.target;
+  const onBoard=tgt===document.getElementById('board');
+  const onSets=tgt===document.getElementById('sets')||tgt===document.getElementById('sets2');
+  const onHint=tgt===document.getElementById('hint');
+  if((onBoard||onSets||onHint)&&G.sel.length>0)doNewSet();
 }
 
 // ── Apps catalog ─────────────────────────────────────────────
-var APPS=[
-  {id:6768068634,name:'Peintres Célèbres'},
-  {id:6767810270,name:'Iles du Monde'},
-  {id:6768003416,name:'Explorateurs du Monde'},
-  {id:6767492967,name:'Institutions Mondiales'},
-  {id:6767135193,name:'Auteurs de BD'},
-  {id:6766260978,name:'Histoire Informatique'},
-  {id:6766261703,name:'Micro-informatique'},
-  {id:6763507194,name:'Hotels RoofTop'},
-  {id:6762618424,name:'Ponts du Monde'},
-  {id:6763076110,name:'Paquebots'},
-  {id:6763069304,name:'Avions de Légende'},
-  {id:6763071567,name:'Voitures'},
-  {id:6762077646,name:'Flip Board'},
-  {id:6762632868,name:'Trains'},
-  {id:6762823383,name:'Châteaux Loire'},
-  {id:6762598304,name:'Mers & Océans'},
-  {id:6762594201,name:'Détroits'},
-  {id:6762558969,name:'ColorCode'},
-  {id:6762552826,name:'Lexigo'},
-  {id:6762542395,name:'Conquêtes'},
-  {id:6762522136,name:'Dynasties Ch.'},
-  {id:6762452564,name:'Dynasties Ru.'},
-  {id:6762370541,name:'États-Unis'},
-  {id:6762091681,name:'Bataille Nav.'},
-  {id:6762098486,name:'Familles Roy.'},
-  {id:6762263227,name:'Leaders Eu.'},
-  {id:6762346365,name:'Pays UE'},
-  {id:6762256169,name:'Présidents US'},
-  {id:6762076518,name:'Dames'},
-  {id:6761993002,name:'Comédie Fr.'},
-  {id:6761769529,name:'Institut Fr.'},
-  {id:6761324444,name:'Présidents Fr.'},
-  {id:6761709149,name:'Saint-Denis'},
-  {id:6761685637,name:'Arbres Fr.'},
-  {id:6761363063,name:'Sénat Paris'},
-  {id:6761656628,name:'Compositeurs'},
-  {id:6761374601,name:'Maréchaux'},
-  {id:6761322546,name:'Rois de Fr.'},
-  {id:6761361079,name:'Assemblée'},
-  {id:6761335268,name:'Panthéon'},
-  {id:1483084001,name:'Belote Calc'},
-  {id:6760751055,name:'Cimetières'},
-  {id:1481989301,name:'Tarots Calc'},
-  {id:6761334922,name:'Académie Fr.'},
-  {id:6761293938,name:'Scènes Paris'},
-  {id:6761271324,name:'MediSafe'},
-  {id:6760617965,name:'MesRestaurants'},
-  {id:6760126279,name:'Cave Manager'},
-  {id:6760890465,name:'Musées Paris'},
-  {id:6760929391,name:'Théâtres Paris'},
-  {id:6759219383,name:'Frigo Manager'},
-  {id:1475884625,name:'Toi ou Moi'},
-  {id:6761421276,name:'Capitales Eu.'},
-  {id:6762006105,name:'Iconic Covers'}
+const APPS=[
+  {name:'Auteurs de BD',        id:'6767135193'},
+  {name:'Histoire Informatique',id:'6766260978'},
+  {name:'Micro-Informatique',   id:'6766261703'},
+  {name:'Institutions Mondiales',id:'6767492967'},
+  {name:'Machines Legendaires', id:'6767273597'},
+  {name:'Iles du Monde',        id:'6767810270'},
+  {name:'Explorateurs du Monde',id:'6768003416'},
+  {name:'Peintres Celebres',    id:'6768068634'},
+  {name:'Legion Honneur',       id:'6768320574'},
+  {name:'Rois de France',       id:'6761322546'},
+  {name:'Presidents Francais',  id:'6761324444'},
+  {name:'Marechaux Napoleon',   id:'6761374601'},
+  {name:'Compositeurs',         id:'6761656628'},
+  {name:'Academie francaise',   id:'6761334922'},
+  {name:'Pantheon Paris',       id:'6761335268'},
+  {name:'Assemblee Paris',      id:'6761361063'},
+  {name:'Senat Paris',          id:'6761363063'},
+  {name:'Basilique Saint-Denis',id:'6761709149'},
+  {name:'Arbres de France',     id:'6761685637'},
+  {name:'Institut de France',   id:'6761769529'},
+  {name:'Comedie Francaise',    id:'6761993002'},
+  {name:'Scenes Paris',         id:'6761293938'},
+  {name:'Musees Paris',         id:'6760890465'},
+  {name:'Theatres Paris',       id:'6760929391'},
+  {name:'Cimetieres Paris',     id:'6760751055'},
+  {name:'Capitales Europe',     id:'6761421276'},
+  {name:'Leaders Europeens',    id:'6762263227'},
+  {name:'Pays UE',              id:'6762346365'},
+  {name:'Dynasties Royales',    id:'6762208827'},
+  {name:'Dynasties Russes',     id:'6762452564'},
+  {name:'Dynasties Chinoises',  id:'6762522136'},
+  {name:'Familles Royales',     id:'6762098486'},
+  {name:'Conquetes Sociales',   id:'6762542395'},
+  {name:'Etats-Unis',           id:'6762370541'},
+  {name:'Presidents Americains',id:'6762256169'},
+  {name:'Mers & Oceans',        id:'6762598304'},
+  {name:'Detroits',             id:'6762594201'},
+  {name:'Ponts du Monde',       id:'6762618424'},
+  {name:'Paquebots Liners',     id:'6763076110'},
+  {name:'Avions de Legende',    id:'6763069304'},
+  {name:'Voitures de Legende',  id:'6763071567'},
+  {name:'Trains Mythiques',     id:'6762632868'},
+  {name:'Chateaux de la Loire', id:'6762823383'},
+  {name:'Hotels RoofTop Paris', id:'6763507194'},
+  {name:'Iconic Covers',        id:'6762006105'},
+  {name:'Bataille Navale',      id:'6762091681'},
+  {name:'Dames Checkers',       id:'6762076518'},
+  {name:'Flip Board',           id:'6762077646'},
+  {name:'ColorCodeMind',        id:'6762558969'},
+  {name:'Lexigo',               id:'6762552826'},
+  {name:'MediSafe',             id:'6761271324'},
+  {name:'MesRestaurants',       id:'6760617965'},
+  {name:'Cave Manager',         id:'6760126279'},
+  {name:'FreshFood Manager',    id:'6759219383'},
+  {name:'Belote Calc',          id:'1483084001'},
+  {name:'Tarots Calc',          id:'1481989301'},
+  {name:'Toi ou Moi',           id:'1475884625'},
 ];
 
 function showApps(){
@@ -814,7 +906,7 @@ function toggleLang(){
 // ── Aide ──────────────────────────────────────────────────────
 const HELP={
   fr:{
-    title:'Aide — TilePlay',
+    title:'Aide — Tuiles Numériques',
     body:`
 <div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">
 🎮 <b>Application 2 joueurs sur le même appareil.</b><br>
@@ -843,6 +935,8 @@ Ex : 7 Rouge + 7 Bleu + 7 Noir ✓</p>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↩</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Annuler la dernière pose uniquement</td></tr>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↺</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Nouvelle partie</td></tr>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🇬🇧</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Basculer en anglais</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✂</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Couper un set en 2 (sélectionner 1 tuile du tapis)</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">▣</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Créer un nouveau set avec les tuiles sélectionnées</td></tr>
 <tr><td style="padding:6px 0"><b style="font-size:18px">?</b></td><td style="padding:6px 8px">Cette aide</td></tr>
 </table>
 
@@ -863,7 +957,7 @@ Ex : 7 Rouge + 7 Bleu + 7 Noir ✓</p>
 `
   },
   en:{
-    title:'Help — TilePlay',
+    title:'Help — Number Tiles',
     body:`
 <div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">
 🎮 <b>2-player app on the same device.</b><br>
@@ -892,6 +986,8 @@ Ex: 7 Red + 7 Blue + 7 Black ✓</p>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↩</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Undo last placement only</td></tr>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">↺</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">New game</td></tr>
 <tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">🇫🇷</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Switch to French</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">✂</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Split a set in 2 (select 1 tile from the board)</td></tr>
+<tr><td style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1)"><b style="font-size:18px">▣</b></td><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)">Create a new set with selected tiles</td></tr>
 <tr><td style="padding:6px 0"><b style="font-size:18px">?</b></td><td style="padding:6px 8px">This help</td></tr>
 </table>
 
@@ -921,6 +1017,34 @@ function showHelp(){
 }
 function closeHelp(){
   document.getElementById('helpov').style.display='none';
+}
+
+function doSplit(){
+  if(G.sel.length!==1)return;
+  const id=G.sel[0];
+  // trouver le set et la position
+  let foundSi=-1,foundTi=-1;
+  for(let si=0;si<G.board.length;si++){
+    const ti=G.board[si].ids.indexOf(id);
+    if(ti>=0){foundSi=si;foundTi=ti;break;}
+  }
+  if(foundSi<0)return;
+  const setIds=G.board[foundSi].ids;
+  // couper avant la tuile sélectionnée : [0..ti-1] et [ti..end]
+  const part1=setIds.slice(0,foundTi);
+  const part2=setIds.slice(foundTi);
+  // vérifier que les deux parties sont valides (>=3 tuiles chacune)
+  if(part1.length<1){setMsg('Sélectionne une tuile après la 1ère.');return;}
+  if(part2.length<1){setMsg('Sélectionne une tuile avant la dernière.');return;}
+  // Les parties incomplètes (<3) sont autorisées — on validera au ✓
+  saveSnap();
+  const owner=G.board[foundSi].owner;
+  G.board.splice(foundSi,1,
+    {owner, ids:part1},
+    {owner, ids:part2}
+  );
+  G.sel=[];
+  render();setMsg('Set coupé en deux !');
 }
 
 initGame();
