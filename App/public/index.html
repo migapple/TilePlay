@@ -79,7 +79,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 <div id="app">
   <div id="topbar" class="p1">
     <div style="display:flex;align-items:center;gap:8px"><div id="tnum">Tour 1</div><button id="blang" onclick="toggleLang()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0;line-height:1">🇬🇧</button></div>
-    <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:1px">Tuiles Numériques</div>
+    <div id="apptitle" style="font-size:16px;font-weight:800;color:#fff;letter-spacing:1px">Tuiles Numériques</div>
     <div class="sc">
       <div id="p1ind" style="display:flex;align-items:center;gap:6px">
         <div id="j1circle" style="width:28px;height:28px;border-radius:50%;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border:2px solid transparent">J1</div>
@@ -122,10 +122,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
     <button class="btn" id="bswitch" onclick="showPass()" style="display:none" title="Changer de joueur">⇄</button>
     <button class="btn" id="bcancel" onclick="doCancel()" title="Annuler">✕</button>
     <button class="btn" id="bundo" onclick="doUndo()" disabled style="background:#374151;color:#d1d5db" title="Undo">↩</button>
-    <button class="btn" id="bnewgame" onclick="initGame()" style="background:#374151;color:#d1d5db" title="Nouvelle partie">↺</button>
+    <button class="btn" id="bnewgame" onclick="confirmNewGame()" style="background:#374151;color:#d1d5db" title="Nouvelle partie">↺</button>
     <button class="btn" id="bhelp" onclick="showHelp()" style="background:#374151;color:#d1d5db" title="Aide">?</button>
     <button class="btn" id="bapps" onclick="showApps()" style="background:#374151;color:#d1d5db" title="Nos apps">📱</button>
     <div id="msg"></div>
+  </div>
+</div>
+
+<!-- CONFIRM NOUVELLE PARTIE -->
+<div id="confirmov" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.85);flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px">
+  <div style="font-size:22px;font-weight:700;color:#fff;text-align:center" id="confirm-msg">Nouvelle partie ?</div>
+  <div style="font-size:14px;color:rgba(255,255,255,.6);text-align:center" id="confirm-sub">La partie en cours sera perdue.</div>
+  <div style="display:flex;gap:12px">
+    <button id="confirm-yes" style="padding:12px 28px;background:#2E7D32;color:#fff;border:none;border-radius:22px;font-size:15px;font-weight:700;cursor:pointer">Oui</button>
+    <button onclick="closeConfirm()" style="padding:12px 28px;background:#374151;color:#fff;border:none;border-radius:22px;font-size:15px;font-weight:700;cursor:pointer" id="confirm-no">Non</button>
   </div>
 </div>
 
@@ -402,6 +412,16 @@ function makeBoardTileEl(id,si,ti){
   d.addEventListener('click',e=>{
     e.stopPropagation();
     if(G.sel.length>0&&!G.sel.includes(id)){
+      // Si la sélection contient déjà des tuiles du plateau → ajouter à la sélection
+      const selHasBoardTile=G.sel.some(sid=>G.board.some(e=>e.ids.includes(sid)));
+      // Si sélection vient uniquement de la main → mode placement
+      const selFromHandOnly=G.sel.every(sid=>G.hands[G.curP].includes(sid));
+      if(selHasBoardTile){
+        // mode multi-sélection plateau : ajouter cette tuile à la sélection
+        G.sel.push(id);
+        render();setMsg('');return;
+      }
+
       const entry=G.board[si];
       const setIds=entry.ids;
       const clickedTile=G.allTiles[id];
@@ -805,6 +825,8 @@ const APPS=[
   {name:'Belote Calc',          id:'1483084001'},
   {name:'Tarots Calc',          id:'1481989301'},
   {name:'Toi ou Moi',           id:'1475884625'},
+  {name:'Tuiles Numeriques',     id:'6768574161'},
+  {name:'App Solitaire',         id:'6769310796'},
 ];
 
 function showApps(){
@@ -1045,6 +1067,19 @@ function doSplit(){
   );
   G.sel=[];
   render();setMsg('Set coupé en deux !');
+}
+
+function confirmNewGame(){
+  const ov=document.getElementById('confirmov');
+  document.getElementById('confirm-msg').textContent=LANG==='fr'?'Nouvelle partie ?':'New game?';
+  document.getElementById('confirm-sub').textContent=LANG==='fr'?'La partie en cours sera perdue.':'The current game will be lost.';
+  document.getElementById('confirm-yes').textContent=LANG==='fr'?'Oui':'Yes';
+  document.getElementById('confirm-no').textContent=LANG==='fr'?'Non':'No';
+  document.getElementById('confirm-yes').onclick=()=>{closeConfirm();initGame();};
+  ov.style.display='flex';
+}
+function closeConfirm(){
+  document.getElementById('confirmov').style.display='none';
 }
 
 initGame();
