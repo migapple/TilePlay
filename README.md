@@ -1,5 +1,8 @@
 # Number Tiles
 
+# 1.8
+- Added Help
+
 For any questions or issues, please contact: michel.garlandat@icloud.com
 
 How to play
