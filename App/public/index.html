@@ -53,8 +53,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
 #sinfo{font-size:11px;font-weight:600;color:var(--gold)}
 #htiles{display:flex;flex-wrap:wrap;gap:5px;padding-bottom:10px;min-height:66px}
 
-#act{flex-shrink:0;background:#0f172a;border-top:1px solid #1e293b;padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{padding:9px 16px;border-radius:22px;font-size:14px;font-weight:600;cursor:pointer;border:none;flex-shrink:0}
+#act{flex-shrink:0;background:#0f172a;border-top:1px solid #1e293b;padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom));display:flex;gap:4px;align-items:center;flex-wrap:nowrap}
+.btn{padding:8px 0;border-radius:22px;font-size:14px;font-weight:600;cursor:pointer;border:none;flex:1;text-align:center;min-width:0}
 .btn:active{opacity:.75}
 #bval{background:#2E7D32;color:#fff}
 #bnew{background:#7B1FA2;color:#fff;width:40px;height:40px;padding:0;border-radius:50%;font-size:24px;line-height:40px;text-align:center}
@@ -123,6 +123,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
     <button class="btn" id="bcancel" onclick="doCancel()" title="Annuler">✕</button>
     <button class="btn" id="bundo" onclick="doUndo()" disabled style="background:#374151;color:#d1d5db" title="Undo">↩</button>
     <button class="btn" id="bnewgame" onclick="confirmNewGame()" style="background:#374151;color:#d1d5db" title="Nouvelle partie">↺</button>
+    <button class="btn" id="bhint" onclick="showHint()" style="background:#854d0e;color:#fef08a" title="Combinaisons possibles">💡</button>
     <button class="btn" id="bhelp" onclick="showHelp()" style="background:#374151;color:#d1d5db" title="Aide">?</button>
     <button class="btn" id="bapps" onclick="showApps()" style="background:#374151;color:#d1d5db" title="Nos apps">📱</button>
     <div id="msg"></div>
@@ -155,6 +156,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg)}
   <div id="pwho"></div>
   <div id="pass-sub" style="font-size:14px;color:rgba(255,255,255,.5)">La main adverse est cachée.</div>
   <button id="pok" onclick="doAfterPass()">Je suis prêt !</button>
+</div>
+
+<div id="hintov" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.93);overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="max-width:480px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:#fef08a">💡 <span id="hint-title">Combinaisons possibles</span></div>
+      <button onclick="closeHint()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:28px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="hint-body" style="font-size:14px;color:rgba(255,255,255,.85)"></div>
+  </div>
 </div>
 
 <div id="winov">
@@ -202,6 +213,7 @@ function initGame(){
     sel:[],
     drawnId:null,
     drew:false,
+    jokerMustPlay:null,
     nextP:1,
     has30:false
   };
@@ -215,6 +227,7 @@ function initGame(){
   document.getElementById('passov').classList.remove('on');
   document.getElementById('winov').classList.remove('on');
   render();
+  setMsg('');
 }
 
 /* ── Validation ── */
@@ -355,6 +368,14 @@ function render(){
   const ht=document.getElementById('htiles');
   ht.innerHTML='';
   G.hands[p].forEach((id,i)=>ht.appendChild(makeHandTileEl(id,i)));
+  // main vide avec tuiles posées → inviter à valider
+  if(G.hands[p].length===0&&placedIds().length>0){
+    const msg=LANG==='fr'?'✓ Main vide — cliquez Valider pour gagner !':'✓ Hand empty — tap Validate to win!';
+    const tip=document.createElement('div');
+    tip.style.cssText='color:#4ade80;font-weight:700;font-size:13px;padding:6px 0;animation:pulse 1s infinite';
+    tip.textContent=msg;
+    ht.appendChild(tip);
+  }
   // bouton ✂ : visible si exactement 1 tuile du plateau sélectionnée
   const splitBtn=document.getElementById('bsplit');
   const newsetBtn=document.getElementById('bnewset2');
@@ -381,6 +402,7 @@ function makeTileEl(id){
   d.className='tile';
   d.dataset.c=t.c;
   d.textContent=t.c==='joker'?'★':t.n;
+  d.title=id; // DEBUG: affiche l'id au survol
   const selIdx=G.sel.indexOf(id);
   if(selIdx>=0){
     d.classList.add('sel');
@@ -412,28 +434,11 @@ function makeBoardTileEl(id,si,ti){
   d.addEventListener('click',e=>{
     e.stopPropagation();
     if(G.sel.length>0&&!G.sel.includes(id)){
-      // Si la sélection contient déjà des tuiles du plateau → ajouter à la sélection
-      const selHasBoardTile=G.sel.some(sid=>G.board.some(e=>e.ids.includes(sid)));
-      // Si sélection vient uniquement de la main → mode placement
-      const selFromHandOnly=G.sel.every(sid=>G.hands[G.curP].includes(sid));
-      if(selHasBoardTile){
-        // mode multi-sélection plateau : ajouter cette tuile à la sélection
-        G.sel.push(id);
-        render();setMsg('');return;
-      }
-
       const entry=G.board[si];
       const setIds=entry.ids;
       const clickedTile=G.allTiles[id];
-      const lastTi=setIds.length-1;
 
-      // ── Règle : pas modifier le set adverse avant 30 pts ──
-      if(!computeHas30()&&entry.owner!==G.curP){
-        setMsg(t().err_adv);
-        render();return;
-      }
-
-      // ── Récupération joker ──
+      // ── Récupération joker : clic sur joker avec sélection ──
       if(clickedTile.c==='joker'){
         const setTiles=setIds.map(tid=>G.allTiles[tid]);
         const nonJ=setTiles.filter(t=>t.c!=='joker');
@@ -466,49 +471,35 @@ function makeBoardTileEl(id,si,ti){
         G.hands[G.curP].push(id);
         G.board[si].ids.splice(pos,0,...G.sel);
         G.sel=[];
+        G.jokerMustPlay=id; // le joker récupéré doit être rejoué ce tour
         setMsg(t().joker_ok);
         render();return;
       }
 
-      // ── Vérifier que l'ajout est valide ──
-      const selTilesAdd=G.sel.map(sid=>G.allTiles[sid]);
-      const setTilesNow=setIds.map(sid=>G.allTiles[sid]);
-      const nonJNow=setTilesNow.filter(t=>t.c!=='joker');
-
-      // Détecter le type de set actuel
-      const setIsGroup=isGroup(setIds);
-      const setIsRun=isRun(setIds);
-
-      // Règle groupe : chiffre identique obligatoire, max 4
-      if(setIsGroup && !setIsRun){
-        const groupNum=nonJNow[0].n;
-        const badTile=selTilesAdd.find(t=>t.c!=='joker'&&t.n!==groupNum);
-        if(badTile){setMsg(t().err_group_num);render();return;}
-        if(setIds.length+G.sel.length>4){setMsg(t().err_group_max);render();return;}
-      }
-
-      // Vérifier que le résultat final est valide
-      {
-        const testIds=ti===0?[...G.sel,...setIds]:[...setIds,...G.sel];
-        if(!isValid(testIds)){setMsg(t().err_run);render();return;}
-      }
-
-      // Placement début ou fin
+      // ── Placement début ou fin, sélection au milieu ──
+      const lastTi=setIds.length-1;
       if(ti===0){
+        // insérer au début
+        const testIds=sortSetIds([...G.sel,...setIds]);
+        if(!isValid(testIds)){setMsg(t().err_invalid);render();return;}
+        if(!computeHas30()&&entry.owner!==G.curP){setMsg(t().err_adv);render();return;}
         saveSnap();
         removeSelFromSources();
-        G.board[si].ids.splice(0,0,...G.sel);
-        G.sel=[];
-        setMsg('');render();
+        G.board[si].ids=sortSetIds([...G.board[si].ids,...G.sel]);
+        G.sel=[];render();setMsg('');
       } else if(ti===lastTi){
+        // ajouter à la fin
+        const testIds=sortSetIds([...setIds,...G.sel]);
+        if(!isValid(testIds)){setMsg(t().err_invalid);render();return;}
+        if(!computeHas30()&&entry.owner!==G.curP){setMsg(t().err_adv);render();return;}
         saveSnap();
         removeSelFromSources();
-        G.board[si].ids.push(...G.sel);
-        G.sel=[];
-        setMsg('');render();
+        G.board[si].ids=sortSetIds([...G.board[si].ids,...G.sel]);
+        G.sel=[];render();setMsg('');
       } else {
-        setMsg(t().err_ends);
-        render();
+        // milieu → ajouter à la sélection
+        G.sel.push(id);
+        render();setMsg('');
       }
     } else {
       // sélectionner/désélectionner
@@ -563,7 +554,7 @@ function removeSelFromSources(){
 
 /* ── Historique undo ── */
 function saveSnap(){
-  G.history.push({board:dc(G.board), hand:dc(G.hands[G.curP])});
+  G.history.push({board:dc(G.board), hand:dc(G.hands[G.curP]), bkBoard:dc(G.bkBoard)});
   if(G.history.length>20)G.history.shift();
   document.getElementById('bundo').disabled=false;
 }
@@ -573,9 +564,32 @@ function doUndo(){
   const snap=G.history.pop();
   G.board=snap.board;
   G.hands[G.curP]=snap.hand;
+  G.bkBoard=snap.bkBoard;
   G.sel=[];
   document.getElementById('bundo').disabled=G.history.length===0;
   render();setMsg('');
+}
+
+function sortSetIds(ids){
+  // Trier les ids d'un set : non-jokers par chiffre, jokers intercalés aux trous
+  const tiles=ids.map(id=>({id,...G.allTiles[id]}));
+  const nonJ=tiles.filter(t=>t.c!=='joker').sort((a,b)=>a.n-b.n);
+  const jokers=tiles.filter(t=>t.c==='joker');
+  if(nonJ.length===0)return ids;
+  // groupe : jokers à la fin
+  if(new Set(nonJ.map(t=>t.n)).size===1)return [...nonJ,...jokers].map(t=>t.id);
+  // suite : intercaler les jokers aux trous
+  const result=[];
+  let ji=0;
+  for(let i=0;i<nonJ.length;i++){
+    if(i>0){
+      const gap=nonJ[i].n-nonJ[i-1].n-1;
+      for(let g=0;g<gap&&ji<jokers.length;g++,ji++)result.push(jokers[ji].id);
+    }
+    result.push(nonJ[i].id);
+  }
+  while(ji<jokers.length)result.push(jokers[ji++].id);
+  return result;
 }
 
 function appendToSet(si){
@@ -592,22 +606,33 @@ function appendToSet(si){
     }
     if(setIds.length+G.sel.length>4){setMsg(t().err_group_max);return;}
   }
-  // toujours vérifier que le résultat final est valide
-  const testIds=[...setIds,...G.sel];
+  // trier le résultat final (isRun est positionnel)
+  const testIds=sortSetIds([...setIds,...G.sel]);
   if(!isValid(testIds)){setMsg(t().err_invalid);return;}
   saveSnap();
   removeSelFromSources();
-  G.board[si].ids.push(...G.sel);
+  // reconstruire le set trié
+  const base=G.board[si].ids;
+  G.board[si].ids=sortSetIds([...base,...G.sel]);
   G.sel=[];
   render();setMsg('');
 }
 
 function doNewSet(){
   if(G.sel.length===0)return;
-  // Si 3+ tuiles sélectionnées, vérifier que c'est un set valide
-  // Si <3 tuiles, on crée un set partiel (sera complété avant validation)
+  // Vérifier seulement si c'est clairement invalide (ex: 2 mêmes couleurs dans groupe)
+  // On laisse passer les sets partiels — la validation finale au ✓ vérifiera tout
   if(G.sel.length>=3&&!isValid(G.sel)){
-    setMsg(t().err_invalid);return;
+    // Tolérer si c'est potentiellement une suite ou groupe en construction
+    // Bloquer uniquement si doublon de couleur évident dans un groupe
+    const selTiles=G.sel.map(id=>G.allTiles[id]).filter(t=>t.c!=='joker');
+    const cols=selTiles.map(t=>t.c);
+    const nums=new Set(selTiles.map(t=>t.n));
+    const hasDupColor=cols.length!==new Set(cols).size;
+    if(hasDupColor&&nums.size===1){
+      setMsg(t().err_invalid);return;
+    }
+    // Sinon laisser passer (set partiel)
   }
   // Vérifier que le retrait depuis le plateau est légal
   for(let si=0;si<G.board.length;si++){
@@ -618,7 +643,33 @@ function doNewSet(){
   }
   saveSnap();
   removeSelFromSources();
-  G.board.push({owner:G.curP, ids:[...G.sel]});
+  // Trier les tuiles : si c'est une suite, intercaler les jokers aux bons endroits
+  const sortedSel=(()=>{
+    const tiles=G.sel.map(id=>({id,...G.allTiles[id]}));
+    const nonJ=tiles.filter(t=>t.c!=='joker').sort((a,b)=>a.n-b.n);
+    const jokers=tiles.filter(t=>t.c==='joker');
+    // si groupe (même chiffre) : jokers à la fin
+    if(nonJ.length>0&&new Set(nonJ.map(t=>t.n)).size===1){
+      return [...nonJ,...jokers].map(t=>t.id);
+    }
+    // si suite : reconstruire avec jokers aux trous
+    if(nonJ.length>0){
+      const result=[];
+      let ji=0;
+      for(let i=0;i<nonJ.length;i++){
+        if(i>0){
+          const gap=nonJ[i].n-nonJ[i-1].n-1;
+          for(let g=0;g<gap&&ji<jokers.length;g++,ji++)result.push(jokers[ji].id);
+        }
+        result.push(nonJ[i].id);
+      }
+      // jokers restants aux extrémités (début ou fin selon position)
+      while(ji<jokers.length){result.push(jokers[ji++].id);}
+      return result;
+    }
+    return G.sel;
+  })();
+  G.board.push({owner:G.curP, ids:sortedSel});
   G.sel=[];
   render();setMsg('');
 }
@@ -649,26 +700,27 @@ function tileScore(id,setIds){
   const nums=nonJ.map(i=>G.allTiles[i].n);
   const uniq=[...new Set(nums)];
   if(uniq.length===1)return uniq[0];
-  // suite : trouver le chiffre manquant
+  // suite : trouver le chiffre que remplace ce joker selon sa position
   const sorted=nums.sort((a,b)=>a-b);
-  // compter les jokers dans le set
-  const jokerCount=setIds.filter(i=>G.allTiles[i].c==='joker').length;
-  // reconstituer la suite complète
   const min=sorted[0],max=sorted[sorted.length-1];
-  // chercher les trous
+  // trous internes
   const holes=[];
   for(let n=min;n<=max;n++) if(!sorted.includes(n)) holes.push(n);
-  // si ce joker remplit un trou connu
-  const myIdx=setIds.indexOf(id);
   if(holes.length>0)return holes[0];
-  // joker aux extrémités
-  return sorted[0]>1?sorted[0]-1:sorted[sorted.length-1]+1;
+  // joker en extrémité : déterminer via sa position dans le set
+  const myPos=setIds.indexOf(id);
+  const firstNonJPos=setIds.findIndex(i=>G.allTiles[i].c!=='joker');
+  // si le joker est avant le premier non-joker → vaut min-1
+  // si le joker est après → vaut max+1
+  if(myPos<firstNonJPos) return min-1;
+  return max+1;
 }
 
 function doValidate(){
   // on peut valider même après avoir pioché
   const placed=placedIds();
-  if(placed.length===0){setMsg(t().err_nothing);return;}
+  if(placed.length===0&&!G.drew){setMsg(t().err_nothing);return;}
+  if(placed.length===0&&G.drew){showPass();return;}
 
   const placedSet=new Set(placed);
   const invalid=G.board.filter(e=>e.ids.some(id=>placedSet.has(id))&&!isValid(e.ids));
@@ -694,9 +746,16 @@ function doValidate(){
     const entry=G.board.find(e=>e.ids.includes(id));
     return a+tileScore(id, entry?entry.ids:null);
   },0);
+  // vérifier que le joker récupéré a été reposé
+  if(G.jokerMustPlay){
+    const jokerOnBoard=G.board.some(e=>e.ids.includes(G.jokerMustPlay));
+    if(!jokerOnBoard){
+      setMsg(t().err_joker_must_play);return;
+    }
+  }
   G.firstPlay[G.curP]=false;
   G.bkBoard=dc(G.board);
-  G.drawnId=null;G.drew=false;G.sel=[];
+  G.drawnId=null;G.drew=false;G.sel=[];G.jokerMustPlay=null;
   if(G.hands[G.curP].length===0){endGame();return;}
   showPass();
 }
@@ -718,12 +777,17 @@ function doCancel(){
   // rembobiner sans pénalité de score (les tuiles n'ont pas encore été validées)
   G.board=dc(G.bkBoard);
   G.hands[G.curP]=dc(G.bkHand);
-  G.sel=[];G.drawnId=null;G.history=[];
+  G.sel=[];G.drawnId=null;G.history=[];G.jokerMustPlay=null;
   document.getElementById('bundo').disabled=true;
   render();setMsg(t().cancelled);
 }
 
 function showPass(){
+  // Si des tuiles ont été posées ce tour → forcer la validation ✓
+  if(placedIds().length>0){
+    setMsg(LANG==='fr'?'Tu as posé des tuiles — clique ✓ pour valider et compter les points.':'You placed tiles — tap ✓ to validate and score points.');
+    return;
+  }
   G.sel=[];
   G.nextP=(G.curP+1)%2;
   doAfterPass(); // TEST MODE : pas d'écran intermédiaire
@@ -735,7 +799,7 @@ function doAfterPass(){
   if(G.curP===0)G.turn++;
   G.bkBoard=dc(G.board);
   G.bkHand=dc(G.hands[G.curP]);
-  G.drawnId=null;G.sel=[];G.drew=false;G.history=[];
+  G.drawnId=null;G.sel=[];G.drew=false;G.history=[];G.jokerMustPlay=null;
   document.getElementById('bundo').disabled=true;
   render();setMsg('');
 }
@@ -750,9 +814,11 @@ function updateStaticText(){
 }
 
 function endGame(){
+  const winner=G.curP;
   const loser=(G.curP+1)%2;
   const pen=G.hands[loser].reduce((a,id)=>a+tileScore(id),0);
-  document.getElementById('wmsg').textContent=t().wins(G.curP+1,loser+1,pen);
+  G.scores[loser]=Math.max(0, G.scores[loser]-pen);
+  document.getElementById('wmsg').textContent=t().wins(winner+1,loser+1,pen,G.scores[winner],G.scores[loser]);
   document.getElementById('winov').classList.add('on');
 }
 
@@ -889,6 +955,7 @@ const T={
     cancelled:'Tour annulé.',
     undo_empty:'Rien à annuler.',
     err_adv:'Pose tes 30 pts avant de toucher les sets adverses.',
+    err_joker_must_play:'Le joker récupéré doit être reposé sur le tapis ce tour !',
   },
   en:{
     tour:'Turn',joueur:'Player',main:'Hand',
@@ -915,6 +982,7 @@ const T={
     cancelled:'Turn cancelled.',
     undo_empty:'Nothing to undo.',
     err_adv:'Score 30 pts before touching opponent sets.',
+    err_joker_must_play:'The retrieved joker must be placed back on the board this turn!',
   }
 };
 function t(){return T[LANG];}
@@ -1080,6 +1148,124 @@ function confirmNewGame(){
 }
 function closeConfirm(){
   document.getElementById('confirmov').style.display='none';
+}
+
+
+// ── Ampoule : chercher combinaisons dans la main ─────────────
+function findCombinations(){
+  const hand=G.hands[G.curP].map(id=>({id,...G.allTiles[id]}));
+  const results=[];
+
+  // ── Groupes (même chiffre, couleurs différentes) ──
+  const byNum={};
+  hand.forEach(t=>{
+    if(t.c==='joker')return;
+    if(!byNum[t.n])byNum[t.n]=[];
+    byNum[t.n].push(t);
+  });
+  const jokers=hand.filter(t=>t.c==='joker');
+
+  Object.keys(byNum).forEach(n=>{
+    const tiles=byNum[n];
+    const uniqCols=[...new Set(tiles.map(t=>t.c))];
+    if(uniqCols.length+jokers.length>=3){
+      // prendre 1 tuile par couleur + jokers si besoin
+      const group=uniqCols.slice(0,4).map(c=>tiles.find(t=>t.c===c));
+      const need=Math.max(0,3-group.length);
+      const used=[...group,...jokers.slice(0,need)];
+      if(used.length>=3){
+        results.push({type:'group',tiles:used,score:used.reduce((a,t)=>a+(t.c==='joker'?parseInt(n):t.n),0)});
+      }
+      // groupe de 4 si possible
+      if(uniqCols.length>=4){
+        const group4=uniqCols.slice(0,4).map(c=>tiles.find(t=>t.c===c));
+        results.push({type:'group4',tiles:group4,score:group4.reduce((a,t)=>a+t.n,0)});
+      }
+    }
+  });
+
+  // ── Suites (même couleur, consécutives) ──
+  COLS.forEach(col=>{
+    const colTiles=hand.filter(t=>t.c===col).sort((a,b)=>a.n-b.n);
+    const seen=new Set();
+    const uniq=colTiles.filter(t=>{if(seen.has(t.n))return false;seen.add(t.n);return true;});
+    for(let i=0;i<uniq.length;i++){
+      let run=[uniq[i]];
+      let jUsed=0;
+      let lastN=uniq[i].n;
+      for(let j=i+1;j<uniq.length;j++){
+        const gap=uniq[j].n-lastN-1;
+        if(gap===0){
+          // consécutif direct — ajouter
+          run.push(uniq[j]);
+          lastN=uniq[j].n;
+        } else if(gap>0&&gap<=jokers.length-jUsed){
+          // trou comblable par jokers
+          for(let k=0;k<gap;k++){run.push(jokers[jUsed]);jUsed++;}
+          run.push(uniq[j]);
+          lastN=uniq[j].n;
+        } else {
+          break;
+        }
+      }
+      // aussi essayer d'ajouter un joker au début ou à la fin
+      if(run.length>=2&&jUsed<jokers.length){
+        const firstN=uniq[i].n;
+        if(firstN>1){
+          const withBefore=[jokers[jUsed],...run];
+          if(withBefore.length>=3)results.push({type:'run',tiles:withBefore,
+            score:withBefore.reduce((a,t)=>a+(t.c==='joker'?firstN-1:t.n),0)});
+        }
+        if(lastN<13){
+          const withAfter=[...run,jokers[jUsed]];
+          if(withAfter.length>=3)results.push({type:'run',tiles:withAfter,
+            score:withAfter.reduce((a,t)=>a+(t.c==='joker'?lastN+1:t.n),0)});
+        }
+      }
+      if(run.length>=3){
+        const sc=run.reduce((a,t,idx)=>{
+          if(t.c!=='joker')return a+t.n;
+          // trouver la valeur du joker selon sa position
+          const prev=run.slice(0,idx).reverse().find(x=>x.c!=='joker');
+          return a+(prev?prev.n+1:uniq[i].n-1);
+        },0);
+        results.push({type:'run',tiles:run,score:sc});
+      }
+    }
+  });
+
+  // Trier par score décroissant
+  results.sort((a,b)=>b.score-a.score);
+  return results;
+}
+
+function tileHtml(t){
+  const colors={red:'#C62828',blue:'#1976D2',black:'#212121',orange:'#FF8F00',joker:'linear-gradient(135deg,#7B1FA2,#1565C0)'};
+  const bg=colors[t.c]||'#333';
+  const txt=t.c==='joker'?'★':t.n;
+  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:42px;border-radius:6px;background:'+bg+';color:#fff;font-weight:800;font-size:14px;margin:2px;box-shadow:0 2px 4px rgba(0,0,0,.4)">'+txt+'</span>';
+}
+
+function showHint(){
+  const combos=findCombinations();
+  const title=LANG==='fr'?'Combinaisons possibles':'Possible combinations';
+  document.getElementById('hint-title').textContent=title;
+  const body=document.getElementById('hint-body');
+  if(combos.length===0){
+    body.innerHTML='<div style="color:rgba(255,255,255,.6);text-align:center;padding:20px">'+(LANG==='fr'?'Aucune combinaison trouvée dans ta main.':'No combinations found in your hand.')+'</div>';
+  } else {
+    const typeLabel={run:LANG==='fr'?'Suite':'Run',group:LANG==='fr'?'Groupe':'Group',group4:LANG==='fr'?'Groupe de 4':'Group of 4'};
+    body.innerHTML=combos.map((c,i)=>
+      '<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+      +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:6px">'+(typeLabel[c.type]||c.type)+' — '+c.score+' pts</div>'
+      +'<div>'+c.tiles.map(t=>tileHtml(t)).join('')+'</div>'
+      +'</div>'
+    ).join('');
+  }
+  document.getElementById('hintov').style.display='block';
+}
+function closeHint(){
+  document.getElementById('hintov').style.display='none';
 }
 
 initGame();
