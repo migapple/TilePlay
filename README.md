@@ -1,9 +1,5 @@
 # Number Tiles
 
-# 1.9
-* 12 13 -> 12 13 * corrected
-
-
 # 1.8
 - Added Help
 
