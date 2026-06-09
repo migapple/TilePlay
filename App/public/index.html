@@ -485,7 +485,7 @@ function makeBoardTileEl(id,si,ti){
         if(!computeHas30()&&entry.owner!==G.curP){setMsg(t().err_adv);render();return;}
         saveSnap();
         removeSelFromSources();
-        G.board[si].ids=sortSetIds([...G.board[si].ids,...G.sel]);
+        G.board[si].ids.splice(0,0,...G.sel);
         G.sel=[];render();setMsg('');
       } else if(ti===lastTi){
         // ajouter à la fin
@@ -494,7 +494,7 @@ function makeBoardTileEl(id,si,ti){
         if(!computeHas30()&&entry.owner!==G.curP){setMsg(t().err_adv);render();return;}
         saveSnap();
         removeSelFromSources();
-        G.board[si].ids=sortSetIds([...G.board[si].ids,...G.sel]);
+        G.board[si].ids.push(...G.sel);
         G.sel=[];render();setMsg('');
       } else {
         // milieu → ajouter à la sélection
@@ -611,9 +611,7 @@ function appendToSet(si){
   if(!isValid(testIds)){setMsg(t().err_invalid);return;}
   saveSnap();
   removeSelFromSources();
-  // reconstruire le set trié
-  const base=G.board[si].ids;
-  G.board[si].ids=sortSetIds([...base,...G.sel]);
+  G.board[si].ids.push(...G.sel);
   G.sel=[];
   render();setMsg('');
 }
@@ -643,33 +641,8 @@ function doNewSet(){
   }
   saveSnap();
   removeSelFromSources();
-  // Trier les tuiles : si c'est une suite, intercaler les jokers aux bons endroits
-  const sortedSel=(()=>{
-    const tiles=G.sel.map(id=>({id,...G.allTiles[id]}));
-    const nonJ=tiles.filter(t=>t.c!=='joker').sort((a,b)=>a.n-b.n);
-    const jokers=tiles.filter(t=>t.c==='joker');
-    // si groupe (même chiffre) : jokers à la fin
-    if(nonJ.length>0&&new Set(nonJ.map(t=>t.n)).size===1){
-      return [...nonJ,...jokers].map(t=>t.id);
-    }
-    // si suite : reconstruire avec jokers aux trous
-    if(nonJ.length>0){
-      const result=[];
-      let ji=0;
-      for(let i=0;i<nonJ.length;i++){
-        if(i>0){
-          const gap=nonJ[i].n-nonJ[i-1].n-1;
-          for(let g=0;g<gap&&ji<jokers.length;g++,ji++)result.push(jokers[ji].id);
-        }
-        result.push(nonJ[i].id);
-      }
-      // jokers restants aux extrémités (début ou fin selon position)
-      while(ji<jokers.length){result.push(jokers[ji++].id);}
-      return result;
-    }
-    return G.sel;
-  })();
-  G.board.push({owner:G.curP, ids:sortedSel});
+  // Respecter l'ordre de sélection de l'utilisateur
+  G.board.push({owner:G.curP, ids:[...G.sel]});
   G.sel=[];
   render();setMsg('');
 }
