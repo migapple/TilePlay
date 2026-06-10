@@ -1,5 +1,8 @@
 # Number Tiles
 
+# 2.0
+You can't take a joker from the opposing team if you don't have 30 points.
+
 # 1.9
 * 12 13 -> 12 13 * corrected
 
