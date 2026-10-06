@@ -1,5 +1,8 @@
 # Number Tiles
 
+# 3.58
+AI Improvement
+
 # 2.0
 You can't take a joker from the opposing team if you don't have 30 points.
 
